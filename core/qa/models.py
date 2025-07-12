@@ -35,7 +35,6 @@ class Answer(models.Model):
     """Model for a user-submitted answer to a question."""
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='answers')
-    content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,18 +79,33 @@ class Vote(models.Model):
 
 
 def answer_image_upload_path(instance, filename):
-    """Generates a path for uploaded answer images: MEDIA_ROOT/answers/<answer_id>/images/<filename>."""
-    return f'answers/{instance.answer.id}/images/{filename}'
+    """Generates a path for uploaded answer content images: MEDIA_ROOT/answers/<answer_id>/content/<filename>."""
+    return f'answers/{instance.answer.id}/content/{filename}'
 
 
-class AnswerImage(models.Model):
-    """An image attached to an answer."""
-    answer = models.ForeignKey(Answer, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to=answer_image_upload_path)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+class AnswerContentBlock(models.Model):
+    """A block of content (text or image) for an answer, allowing for ordered content."""
+    TEXT = 'text'
+    IMAGE = 'image'
+    CONTENT_TYPE_CHOICES = (
+        (TEXT, 'Text'),
+        (IMAGE, 'Image'),
+    )
 
-    def __str__(self):
-        return f"Image for answer {self.answer.id}"
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE, related_name='content_blocks')
+    order = models.PositiveIntegerField(help_text="The order in which this block appears in the answer.")
+
+    content_type = models.CharField(max_length=5, choices=CONTENT_TYPE_CHOICES)
+    text = models.TextField(blank=True, null=True, help_text="Text content, if this is a text block.")
+    image = models.ImageField(
+        upload_to=answer_image_upload_path,
+        blank=True, null=True,
+        help_text="Image content, if this is an image block."
+    )
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ('answer', 'order')  # Each block in an answer must have a unique order
 
 
 class Comment(models.Model):
