@@ -10,8 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -37,17 +41,81 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required by dj-rest-auth for registration
 ]
+
+# Third-party apps
+THIRD_PARTY_APPS = [
+    'corsheaders',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',  # Recommended for a complete allauth setup
+]
+
+# Local apps
+LOCAL_APPS = ['account.apps.AccountConfig']
+
+INSTALLED_APPS += THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+# Custom User Model
+AUTH_USER_MODEL = "accounts.User"
+
+# Required for dj-rest-auth registration
+SITE_ID = 1
+
+# For development, emails will be printed to the console
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# django-allauth configuration
+# Tells allauth to use email for authentication and that a username is required for signup.
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = "optional"  # Change to "mandatory" for production
+
+# CORS configuration
+# In development, allow all origins. For production, restrict this to your frontend's domain.
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Your frontend development server
+    "http://127.0.0.1:3000",
+]
+
+# dj-rest-auth configuration
+REST_AUTH = {
+    "REGISTER_SERIALIZER": "account.serializers.CustomRegisterSerializer",
+    "USER_DETAILS_SERIALIZER": "account.serializers.CustomUserDetailsSerializer",
+    # Use TokenAuthentication only, making the API stateless
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.TokenAuthentication",
+    ),
+}
+
+# Django Rest Framework configuration
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    # Secure your API by default - endpoints must explicitly be marked as public
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
 
 ROOT_URLCONF = 'core.urls'
 
@@ -72,6 +140,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Using SQLite for development is simple and requires no external database server.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -115,8 +184,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
